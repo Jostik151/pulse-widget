@@ -3,12 +3,15 @@
 (function () {
     const params = new URLSearchParams(window.location.search || window.location.hash.replace(/^#/, '?'));
 
-    let nickname = params.get('nickname') || params.get('player') || params.get('user') || '';
+    let nickname = (params.get('nickname') || params.get('player') || params.get('user') || '').trim();
     let matchesLimit = parseInt(params.get('matches') || '30', 10);
     if (![10, 20, 30].includes(matchesLimit)) matchesLimit = 30;
     const forceTransparent = params.get('bg') === 'transparent' || params.get('transparent') === '1';
 
-    let cachedApiKey = null;
+    // Faceit API Token: from URL param, or fallback to standard Open API client key
+    const DEFAULT_FACEIT_KEY = '37f50b4c-e9b0-411d-8113-11bfddbdbea8';
+    let apiKey = params.get('token') || params.get('key') || DEFAULT_FACEIT_KEY;
+
     let isFetching = false;
 
     function applyTransparent(isTransparent) {
@@ -53,20 +56,6 @@
         }
     }
 
-    async function getFaceitApiKey() {
-        if (cachedApiKey) return cachedApiKey;
-        try {
-            const resp = await fetch('https://api.fforecast.net/v1/faceit/access-token');
-            if (resp.ok) {
-                cachedApiKey = (await resp.text()).trim();
-                return cachedApiKey;
-            }
-        } catch (e) {
-            console.warn('[Faceit Pulse] Failed to fetch token:', e);
-        }
-        return null;
-    }
-
     function getCountryHtml(countryCode) {
         if (!countryCode) return '';
         const cc = countryCode.toLowerCase();
@@ -77,25 +66,36 @@
     }
 
     async function fetchLivePlayerStats(userNick) {
-        const apiKey = await getFaceitApiKey();
-        if (!apiKey) {
-            console.error('[Faceit Pulse] No API token available');
-            return null;
-        }
-
         const headers = {
             'Authorization': `Bearer ${apiKey}`,
             'Accept': 'application/json'
         };
 
         // 1. Fetch player profile
-        const playerResp = await fetch(`https://open.faceit.com/data/v4/players?nickname=${encodeURIComponent(userNick)}`, { headers });
+        let playerResp;
+        try {
+            playerResp = await fetch(`https://open.faceit.com/data/v4/players?nickname=${encodeURIComponent(userNick)}`, { headers });
+        } catch (netErr) {
+            console.error('[Faceit Pulse] Network error fetching player:', netErr);
+            return {
+                rank: '!',
+                elo: 'NET ERR',
+                overallKdr: 'OFFLINE',
+                countryRank: '',
+                headerText: 'ПОМИЛКА З\'ЄДНАННЯ З FACEIT',
+                winRate: '—',
+                killsAdr: '— / —',
+                kdKr: '— / —',
+                flagHtml: ''
+            };
+        }
+
         if (!playerResp.ok) {
             console.error('[Faceit Pulse] Player not found:', userNick, playerResp.status);
             return {
-                rank: '!',
-                elo: 'ERROR',
-                overallKdr: 'NOT FOUND',
+                rank: '?',
+                elo: 'НЕ ЗНАЙДЕНО',
+                overallKdr: '404',
                 countryRank: '',
                 headerText: `ГРАВЦЯ "${userNick}" НЕ ЗНАЙДЕНО`,
                 winRate: '—',
@@ -128,7 +128,7 @@
         const skillLevel = cs2.skill_level || 10;
         const region = cs2.region || 'EU';
 
-        // 2. Fetch match stats, lifetime stats, and rankings in parallel
+        // 2. Parallel requests: Match history stats, Lifetime stats, Country ranking
         const [statsData, lifetimeData, rankData] = await Promise.all([
             fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=${matchesLimit}`, { headers })
                 .then(r => r.ok ? r.json() : null)
