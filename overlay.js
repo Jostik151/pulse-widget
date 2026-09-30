@@ -8,7 +8,7 @@
     if (![10, 20, 30].includes(matchesLimit)) matchesLimit = 30;
     const forceTransparent = params.get('bg') === 'transparent' || params.get('transparent') === '1';
 
-    // Faceit API Token: from URL param, or fallback to standard Open API client key
+    // Direct Faceit Open API Key (Client Key)
     const DEFAULT_FACEIT_KEY = '37f50b4c-e9b0-411d-8113-11bfddbdbea8';
     let apiKey = params.get('token') || params.get('key') || DEFAULT_FACEIT_KEY;
 
@@ -51,8 +51,8 @@
         if (elKillsAdr && stats.killsAdr !== undefined) elKillsAdr.textContent = stats.killsAdr;
         if (elKdKr && stats.kdKr !== undefined) elKdKr.textContent = stats.kdKr;
 
-        if (elFlag && stats.flagHtml) {
-            elFlag.innerHTML = stats.flagHtml;
+        if (elFlag) {
+            elFlag.innerHTML = stats.flagHtml || '';
         }
     }
 
@@ -82,7 +82,7 @@
                 elo: 'NET ERR',
                 overallKdr: 'OFFLINE',
                 countryRank: '',
-                headerText: 'ПОМИЛКА З\'ЄДНАННЯ З FACEIT',
+                headerText: 'ПОМИЛКА МЕРЕЖІ З FACEIT',
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
@@ -94,10 +94,10 @@
             console.error('[Faceit Pulse] Player not found:', userNick, playerResp.status);
             return {
                 rank: '?',
-                elo: 'НЕ ЗНАЙДЕНО',
-                overallKdr: '404',
+                elo: '404',
+                overallKdr: 'НЕ ЗНАЙДЕНО',
                 countryRank: '',
-                headerText: `ГРАВЦЯ "${userNick}" НЕ ЗНАЙДЕНО`,
+                headerText: `НІК "${userNick}" НЕ ІСНУЄ НА FACEIT`,
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
@@ -128,8 +128,8 @@
         const skillLevel = cs2.skill_level || 10;
         const region = cs2.region || 'EU';
 
-        // 2. Parallel requests: Match history stats, Lifetime stats, Country ranking
-        const [statsData, lifetimeData, rankData] = await Promise.all([
+        // 2. Parallel requests: Match stats, Lifetime stats, Country rank, Regional rank
+        const [statsData, lifetimeData, countryRankData, regionRankData] = await Promise.all([
             fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=${matchesLimit}`, { headers })
                 .then(r => r.ok ? r.json() : null)
                 .catch(() => null),
@@ -138,13 +138,22 @@
                 .catch(() => null),
             country ? fetch(`https://open.faceit.com/data/v4/rankings/games/cs2/regions/${encodeURIComponent(region)}/players/${playerId}?country=${encodeURIComponent(country)}`, { headers })
                 .then(r => r.ok ? r.json() : null)
-                .catch(() => null) : Promise.resolve(null)
+                .catch(() => null) : Promise.resolve(null),
+            fetch(`https://open.faceit.com/data/v4/rankings/games/cs2/regions/${encodeURIComponent(region)}/players/${playerId}`, { headers })
+                .then(r => r.ok ? r.json() : null)
+                .catch(() => null)
         ]);
 
-        // Country rank
+        // Country rank position
         let countryPosition = '';
-        if (rankData && rankData.position) {
-            countryPosition = String(rankData.position);
+        if (countryRankData && countryRankData.position) {
+            countryPosition = String(countryRankData.position);
+        }
+
+        // Rank badge: if player is Challenger (Top 1000 in region), show regional rank position (e.g. #1 for donk)
+        let rankBadge = `#${skillLevel}`;
+        if (regionRankData && regionRankData.position && regionRankData.position <= 1000) {
+            rankBadge = `#${regionRankData.position}`;
         }
 
         // Lifetime KDR
@@ -159,11 +168,11 @@
 
         if (totalMatches === 0) {
             return {
-                rank: `#${skillLevel}`,
+                rank: rankBadge,
                 elo: String(currentElo),
                 overallKdr: overallKdrText,
                 countryRank: countryPosition,
-                headerText: `LAST ${matchesLimit} MATCHES (${userNick})`,
+                headerText: `LAST ${matchesLimit} MATCHES (${playerData.nickname})`,
                 winRate: '0%',
                 killsAdr: '— / —',
                 kdKr: '— / —',
@@ -208,11 +217,11 @@
         }
 
         return {
-            rank: `#${skillLevel}`,
+            rank: rankBadge,
             elo: String(currentElo),
             overallKdr: overallKdrText,
             countryRank: countryPosition,
-            headerText: `LAST ${totalMatches} MATCHES (${userNick})`,
+            headerText: `LAST ${totalMatches} MATCHES (${playerData.nickname})`,
             winRate: `${winRateNum}%`,
             killsAdr: `${avgKills} / ${avgAdr}`,
             kdKr: `${recentKd} / ${recentKr}`,
