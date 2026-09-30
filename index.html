@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faceit Pulse Stream Overlay</title>
+    <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+    <div id="widgetContainer" class="widget-wrapper">
+        <div class="pulse-stream-widget" id="streamWidget">
+            <!-- Top Row: Rank Badge, ELO, KDR, Country & Country Rank -->
+            <div class="psw-top-row">
+                <div class="psw-left">
+                    <div class="psw-rank-pill" id="pswRankPill">
+                        <span class="psw-rank-num" id="pswRankNum">#25</span>
+                        <div class="psw-rank-icon" title="Challenger">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                                <path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3-4.8-2.5-4.8 2.5.9-5.3-3.8-3.7 5.3-.8z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span class="psw-elo" id="pswElo">4244</span>
+                </div>
+                <div class="psw-kdr" id="pswKdr">1.24 KDR</div>
+                <div class="psw-right">
+                    <span class="psw-flag" id="pswFlag">
+                        <svg width="18" height="13" viewBox="0 0 18 13" style="border-radius:2px; display:inline-block; vertical-align:middle;">
+                            <rect width="18" height="6.5" fill="#005BBB"/>
+                            <rect y="6.5" width="18" height="6.5" fill="#FFD700"/>
+                        </svg>
+                    </span>
+                    <span class="psw-country-rank" id="pswCountryRank">#3</span>
+                </div>
+            </div>
+
+            <!-- Mid Row: Last N Matches Header -->
+            <div class="psw-mid-row" id="pswMatchesHeader">LAST 30 MATCHES</div>
+
+            <!-- Bottom Row: 3-column stats -->
+            <div class="psw-bot-row">
+                <div class="psw-stat-col">
+                    <div class="psw-stat-val" id="pswWinrate">70%</div>
+                    <div class="psw-stat-lbl">Win rate</div>
+                </div>
+                <div class="psw-stat-col">
+                    <div class="psw-stat-val" id="pswKillsAdr">20 / 91.3</div>
+                    <div class="psw-stat-lbl">Avg. Kills / ADR</div>
+                </div>
+                <div class="psw-stat-col">
+                    <div class="psw-stat-val" id="pswKdKr">1.45 / 0.93</div>
+                    <div class="psw-stat-lbl">K/D / K/R</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="overlay.js"></script>
+</body>
+</html>
