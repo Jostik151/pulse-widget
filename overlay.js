@@ -20,10 +20,9 @@
 
     // Styling & Theme
     const bgParam = params.get('bg') || '';
-    const mapParam = (params.get('map') || '').toLowerCase();
-    const bgImageParam = params.get('bgImage') || params.get('img') || '';
+    const presetParam = (params.get('preset') || params.get('theme') || 'dark').toLowerCase();
+    const isMono = params.get('mono') === '1' || params.get('monochrome') === '1' || presetParam.startsWith('mono');
     const accentParam = params.get('accent') || '';
-    const themeParam = (params.get('theme') || 'dark').toLowerCase();
 
     // Direct Faceit Open API Key
     const DEFAULT_FACEIT_KEY = '37f50b4c-e9b0-411d-8113-11bfddbdbea8';
@@ -32,15 +31,6 @@
     let isFetching = false;
     let cycleTimer = null;
     let activeSlideIndex = 0; // 0 = matches, 1 = today
-
-    const MAP_PRESETS = {
-        mirage: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_mirage.png',
-        dust2: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_dust2.png',
-        inferno: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_inferno.png',
-        nuke: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_nuke.png',
-        ancient: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_ancient.png',
-        anubis: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_anubis.png'
-    };
 
     function applyCustomStyles() {
         const isPro = layout === 'pro' || layout === 'wide';
@@ -58,39 +48,53 @@
 
         if (!widget) return;
 
-        // Theme (Light)
-        if (themeParam === 'light' || bgParam === 'white' || bgParam === '#ffffff') {
+        // Clear previous theme classes
+        const themeClasses = [
+            'theme-light', 'theme-mono-light', 'theme-mono-dark',
+            'theme-slate', 'theme-midnight', 'theme-crimson', 'theme-emerald',
+            'transparent-bg', 'psw-monochrome'
+        ];
+        [compactWidget, proWidget].forEach(w => {
+            if (w) w.classList.remove(...themeClasses);
+        });
+
+        // Apply Preset
+        if (presetParam === 'light') {
             widget.classList.add('theme-light');
-        } else {
-            widget.classList.remove('theme-light');
+        } else if (presetParam === 'mono-light') {
+            widget.classList.add('theme-mono-light', 'psw-monochrome');
+        } else if (presetParam === 'mono-dark') {
+            widget.classList.add('theme-mono-dark', 'psw-monochrome');
+        } else if (presetParam === 'slate') {
+            widget.classList.add('theme-slate');
+        } else if (presetParam === 'midnight') {
+            widget.classList.add('theme-midnight');
+        } else if (presetParam === 'crimson') {
+            widget.classList.add('theme-crimson');
+        } else if (presetParam === 'emerald') {
+            widget.classList.add('theme-emerald');
+        } else if (presetParam === 'transparent' || bgParam === 'transparent' || bgParam === '1') {
+            widget.classList.add('transparent-bg');
+        }
+
+        if (isMono) {
+            widget.classList.add('psw-monochrome');
         }
 
         // Accent Color
         if (accentParam) {
             let color = accentParam.startsWith('#') ? accentParam : `#${accentParam}`;
+            let glow = color.length === 7 ? color + '55' : color;
             widget.style.setProperty('--psw-accent', color);
-            widget.style.setProperty('--psw-accent-glow', color + '55');
+            widget.style.setProperty('--psw-accent-glow', glow);
+            widget.style.setProperty('--pro-accent', color);
             widget.style.setProperty('--pro-border', color);
-            widget.style.setProperty('--pro-border-glow', color + '44');
+            widget.style.setProperty('--pro-border-glow', glow);
         }
 
-        // Background settings
-        if (bgParam === 'transparent' || bgParam === '1') {
-            widget.classList.add('transparent-bg');
-        } else if (bgParam && bgParam.startsWith('#')) {
+        if (bgParam && bgParam.startsWith('#')) {
             widget.style.setProperty('--psw-bg', bgParam);
             widget.style.background = bgParam;
-        }
-
-        // Map photo background
-        let bgUrl = bgImageParam;
-        if (!bgUrl && mapParam && MAP_PRESETS[mapParam]) {
-            bgUrl = MAP_PRESETS[mapParam];
-        }
-
-        if (bgUrl) {
-            widget.classList.add('has-bg-image');
-            widget.style.backgroundImage = `url("${bgUrl}")`;
         }
     }
 
@@ -301,7 +305,8 @@
         if (elTodayKillsAdr && stats.todayKillsAdr !== undefined) elTodayKillsAdr.textContent = stats.todayKillsAdr;
         if (elTodayKd && stats.todayKd !== undefined) elTodayKd.textContent = stats.todayKd;
 
-        if (elFlag) elFlag.innerHTML = stats.flagHtml || '';
+        const countryTagHtml = `<span class="psw-country-tag">${(stats.countryCode || '').toUpperCase()}</span>`;
+        if (elFlag) elFlag.innerHTML = isMono ? countryTagHtml : (stats.flagHtml || '');
         setupBadgeVisibility(stats.rank, stats.skillLevel, stats.isChallenger);
 
         // Layout 2: Pro Wide Banner (media_1790812631607.png & media_1790813500552.png)
@@ -366,7 +371,7 @@
             }
         }
 
-        if (ppbCountryFlag) ppbCountryFlag.innerHTML = stats.flagHtml || '';
+        if (ppbCountryFlag) ppbCountryFlag.innerHTML = isMono ? countryTagHtml : (stats.flagHtml || '');
 
         // Streak W/L HTML
         if (ppbStreak && stats.streakHtml) {
@@ -535,7 +540,7 @@
             countryRank: countryPosition,
             countryCode: country,
             euRank: isChallenger ? euPosition : '',
-            headerText: `LAST ${totalMatches} MATCHES (${playerData.nickname})`,
+            headerText: `LAST ${totalMatches || matchesLimit} MATCHES`,
             winRate: `${winRateNum}%`,
             killsAdr: `${avgKills} / ${avgAdr}`,
             kdKr: `${recentKd} / ${recentKr}`,

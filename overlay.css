@@ -52,6 +52,30 @@ html, body {
     color: var(--psw-text);
 }
 
+.pulse-stream-widget::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--psw-accent, #ffc700);
+    box-shadow: 0 0 10px var(--psw-accent, #ffc700);
+    z-index: 2;
+}
+
+.pulse-stream-widget.psw-monochrome::before {
+    display: none !important;
+}
+
+#pswWinRate {
+    color: var(--psw-accent, #ffc700);
+}
+
+.psw-monochrome #pswWinRate {
+    color: inherit !important;
+}
+
 .pulse-stream-widget.has-bg-image {
     background-size: cover !important;
     background-position: center !important;
@@ -109,6 +133,120 @@ html, body {
 
 .pulse-stream-widget.theme-light .psw-rank-pill {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Mono White */
+.pulse-stream-widget.theme-mono-light {
+    --psw-bg: #ffffff;
+    --psw-text: #111111;
+    --psw-text-muted: #666666;
+    --psw-header-text: #666666;
+    --psw-border-color: rgba(0, 0, 0, 0.12);
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.14) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+    color: #111111 !important;
+}
+.pulse-stream-widget.theme-mono-light .psw-elo,
+.pulse-stream-widget.theme-mono-light .psw-kdr,
+.pulse-stream-widget.theme-mono-light .psw-country-rank,
+.pulse-stream-widget.theme-mono-light .psw-stat-val {
+    color: #111111 !important;
+}
+
+/* Mono Dark */
+.pulse-stream-widget.theme-mono-dark {
+    --psw-bg: #090b0e;
+    --psw-text: #ffffff;
+    --psw-text-muted: #888888;
+    --psw-header-text: #888888;
+    --psw-border-color: rgba(255, 255, 255, 0.14);
+    background: #090b0e !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.85) !important;
+    color: #ffffff !important;
+}
+
+/* Deep Slate */
+.pulse-stream-widget.theme-slate {
+    --psw-bg: #1e293b;
+    --psw-text: #f8fafc;
+    --psw-text-muted: #94a3b8;
+    --psw-header-text: #94a3b8;
+    background: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Midnight Navy */
+.pulse-stream-widget.theme-midnight {
+    --psw-bg: #0b132b;
+    --psw-text: #ffffff;
+    --psw-text-muted: #718096;
+    --psw-header-text: #63b3ed;
+    background: #0b132b !important;
+    border: 1px solid rgba(66, 153, 225, 0.3) !important;
+    box-shadow: 0 0 16px rgba(66, 153, 225, 0.15), 0 6px 24px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Velvet Crimson */
+.pulse-stream-widget.theme-crimson {
+    --psw-bg: #1c0a12;
+    --psw-text: #ffffff;
+    --psw-text-muted: #a0aec0;
+    --psw-header-text: #feb2b2;
+    background: #1c0a12 !important;
+    border: 1px solid rgba(245, 101, 101, 0.3) !important;
+    box-shadow: 0 0 16px rgba(245, 101, 101, 0.15), 0 6px 24px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Forest Emerald */
+.pulse-stream-widget.theme-emerald {
+    --psw-bg: #061a14;
+    --psw-text: #ffffff;
+    --psw-text-muted: #a0aec0;
+    --psw-header-text: #9ae6b4;
+    background: #061a14 !important;
+    border: 1px solid rgba(72, 187, 120, 0.3) !important;
+    box-shadow: 0 0 16px rgba(72, 187, 120, 0.15), 0 6px 24px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* MONOCHROME OVERRIDES (Single Tone) */
+.psw-monochrome .psw-win-num { color: inherit !important; }
+.psw-monochrome .psw-loss-num { color: inherit !important; opacity: 0.85; }
+.psw-monochrome .psw-win-text { color: inherit !important; opacity: 0.65; }
+.psw-monochrome .psw-loss-text { color: inherit !important; opacity: 0.65; }
+
+.psw-monochrome .psw-level-badge {
+    background: #111111 !important;
+    color: #ffffff !important;
+    border: 1.5px solid rgba(125, 125, 125, 0.4) !important;
+    box-shadow: none !important;
+}
+
+.psw-monochrome .faceit-level-svg {
+    filter: grayscale(100%) !important;
+}
+
+.psw-monochrome .ppb-w,
+.psw-monochrome .ppb-l {
+    background: rgba(125, 125, 125, 0.18) !important;
+    color: inherit !important;
+    border: 1px solid rgba(125, 125, 125, 0.25) !important;
+}
+
+.psw-country-tag {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: rgba(125, 125, 125, 0.18);
+    border: 1px solid rgba(125, 125, 125, 0.25);
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+    color: inherit;
 }
 
 .psw-level-badge {
