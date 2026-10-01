@@ -1,4 +1,4 @@
-/* Faceit Pulse - Real Live Faceit Statistics Overlay with Customization Engine */
+/* Faceit Pulse - Advanced Multi-Layout Overlay Controller */
 
 (function () {
     const params = new URLSearchParams(window.location.search || window.location.hash.replace(/^#/, '?'));
@@ -7,14 +7,15 @@
     let matchesLimit = parseInt(params.get('matches') || '30', 10);
     if (![10, 20, 30].includes(matchesLimit)) matchesLimit = 30;
 
+    // Layout Template selection
+    const layout = (params.get('layout') || params.get('style') || 'compact').toLowerCase(); // 'compact' | 'pro' | 'wide'
+
     // Display & Cycle mode
     const displayMode = (params.get('mode') || 'cycle').toLowerCase(); // 'cycle' | 'matches' | 'today'
     const swapInterval = parseInt(params.get('swap') || '8', 10) * 1000;
 
     // Challenger Settings
-    // showRank: default true (1)
     const showRank = params.get('showRank') !== '0' && params.get('rank') !== '0';
-    // showIcon: default true (1)
     const showChallengerIcon = params.get('showChallengerIcon') !== '0' && params.get('showIcon') !== '0' && params.get('icon') !== '0';
 
     // Styling & Theme
@@ -24,7 +25,7 @@
     const accentParam = params.get('accent') || '';
     const themeParam = (params.get('theme') || 'dark').toLowerCase();
 
-    // Direct Faceit Open API Client Key
+    // Direct Faceit Open API Key
     const DEFAULT_FACEIT_KEY = '37f50b4c-e9b0-411d-8113-11bfddbdbea8';
     let apiKey = params.get('token') || params.get('key') || DEFAULT_FACEIT_KEY;
 
@@ -32,7 +33,6 @@
     let cycleTimer = null;
     let activeSlideIndex = 0; // 0 = matches, 1 = today
 
-    // Predefined high-res CS2 map backgrounds
     const MAP_PRESETS = {
         mirage: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_mirage.png',
         dust2: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_dust2.png',
@@ -43,10 +43,22 @@
     };
 
     function applyCustomStyles() {
-        const widget = document.getElementById('streamWidget');
+        const isPro = layout === 'pro' || layout === 'wide';
+        const widget = isPro ? document.getElementById('pulseProBanner') : document.getElementById('streamWidget');
+        const compactWidget = document.getElementById('streamWidget');
+        const proWidget = document.getElementById('pulseProBanner');
+
+        if (isPro) {
+            if (proWidget) proWidget.style.display = 'block';
+            if (compactWidget) compactWidget.style.display = 'none';
+        } else {
+            if (compactWidget) compactWidget.style.display = 'block';
+            if (proWidget) proWidget.style.display = 'none';
+        }
+
         if (!widget) return;
 
-        // Theme (Light or Dark)
+        // Theme (Light)
         if (themeParam === 'light' || bgParam === 'white' || bgParam === '#ffffff') {
             widget.classList.add('theme-light');
         } else {
@@ -58,20 +70,19 @@
             let color = accentParam.startsWith('#') ? accentParam : `#${accentParam}`;
             widget.style.setProperty('--psw-accent', color);
             widget.style.setProperty('--psw-accent-glow', color + '55');
+            widget.style.setProperty('--pro-border', color);
+            widget.style.setProperty('--pro-border-glow', color + '44');
         }
 
         // Background settings
         if (bgParam === 'transparent' || bgParam === '1') {
             widget.classList.add('transparent-bg');
-        } else if (bgParam === 'clear' || bgParam === 'full') {
-            widget.classList.add('full-transparent-bg');
         } else if (bgParam && bgParam.startsWith('#')) {
             widget.style.setProperty('--psw-bg', bgParam);
-        } else if (bgParam && !bgParam.includes('http')) {
-            widget.style.setProperty('--psw-bg', `#${bgParam}`);
+            widget.style.background = bgParam;
         }
 
-        // Background image / map
+        // Map photo background
         let bgUrl = bgImageParam;
         if (!bgUrl && mapParam && MAP_PRESETS[mapParam]) {
             bgUrl = MAP_PRESETS[mapParam];
@@ -83,6 +94,47 @@
         }
     }
 
+    function getChallengerTier(rankText) {
+        const num = parseInt(String(rankText).replace(/[^0-9]/g, ''), 10) || 10;
+        if (num === 1) {
+            return {
+                tierClass: 'rank-tier-1',
+                holderClass: 'BadgeHolder__FirstRank',
+                fill: '#FFD336',
+                textColor: '#121212',
+                border: '#FFD336',
+                glow: 'rgba(255, 211, 54, 0.55)'
+            };
+        } else if (num === 2) {
+            return {
+                tierClass: 'rank-tier-2',
+                holderClass: 'BadgeHolder__SecondRank',
+                fill: '#DEF5FF',
+                textColor: '#121212',
+                border: '#DEF5FF',
+                glow: 'rgba(222, 245, 255, 0.55)'
+            };
+        } else if (num === 3) {
+            return {
+                tierClass: 'rank-tier-3',
+                holderClass: 'BadgeHolder__ThirdRank',
+                fill: '#FF7236',
+                textColor: '#ffffff',
+                border: '#FF7236',
+                glow: 'rgba(255, 114, 54, 0.55)'
+            };
+        } else {
+            return {
+                tierClass: 'rank-tier-default',
+                holderClass: 'BadgeHolder__DefaultRank',
+                fill: '#e80128',
+                textColor: '#ffffff',
+                border: '#e80128',
+                glow: 'rgba(232, 1, 40, 0.55)'
+            };
+        }
+    }
+
     function setupBadgeVisibility(rankText, skillLevel, isChallenger) {
         const pill = document.getElementById('pswRankPill');
         const standaloneIcon = document.getElementById('pswStandaloneIcon');
@@ -91,34 +143,44 @@
 
         if (!pill || !standaloneIcon || !levelBadge) return;
 
-        // Reset
+        const tier = getChallengerTier(rankText);
+
         pill.classList.remove('pill-hidden');
+        pill.classList.remove(
+            'rank-tier-1', 'rank-tier-2', 'rank-tier-3', 'rank-tier-default',
+            'BadgeHolder__FirstRank', 'BadgeHolder__SecondRank', 'BadgeHolder__ThirdRank', 'BadgeHolder__DefaultRank'
+        );
+        pill.classList.add(tier.tierClass, tier.holderClass);
+
+        // Update official SVG colors
+        const pswPillSvg = document.getElementById('pswPillSvg');
+        if (pswPillSvg) pswPillSvg.setAttribute('fill', tier.fill);
+
+        const pswStandaloneSvg = document.getElementById('pswStandaloneSvg');
+        if (pswStandaloneSvg) pswStandaloneSvg.setAttribute('fill', tier.fill);
+
+        const ppbChallengerSvg = document.getElementById('ppbChallengerSvg');
+        if (ppbChallengerSvg) ppbChallengerSvg.setAttribute('fill', tier.fill);
+
         standaloneIcon.classList.add('hidden');
         levelBadge.classList.add('hidden');
         if (pillIcon) pillIcon.style.display = '';
 
-        // Case 1: Both ON (Image 2 & 3: showRank=true, showIcon=true)
         if (showRank && showChallengerIcon) {
             pill.classList.remove('pill-hidden');
             if (pillIcon) pillIcon.style.display = 'inline-flex';
             standaloneIcon.classList.add('hidden');
             levelBadge.classList.add('hidden');
-        }
-        // Case 2: Icon ON, Rank OFF (Image 4: showRank=false, showIcon=true)
-        else if (!showRank && showChallengerIcon) {
+        } else if (!showRank && showChallengerIcon) {
             pill.classList.add('pill-hidden');
             standaloneIcon.classList.remove('hidden');
             levelBadge.classList.add('hidden');
-        }
-        // Case 3: Both OFF (Image 5: showRank=false, showIcon=false)
-        else if (!showRank && !showChallengerIcon) {
+        } else if (!showRank && !showChallengerIcon) {
             pill.classList.add('pill-hidden');
             standaloneIcon.classList.add('hidden');
             levelBadge.classList.remove('hidden');
             levelBadge.textContent = skillLevel || '10';
-        }
-        // Case 4: Rank ON, Icon OFF (showRank=true, showIcon=false)
-        else {
+        } else {
             pill.classList.remove('pill-hidden');
             if (pillIcon) pillIcon.style.display = 'none';
             standaloneIcon.classList.add('hidden');
@@ -136,13 +198,7 @@
     }
 
     function renderStats(stats) {
-        const widget = document.getElementById('streamWidget');
-        if (widget) {
-            widget.classList.remove('psw-updating');
-            void widget.offsetWidth;
-            widget.classList.add('psw-updating');
-        }
-
+        // Layout 1: Compact Cyber
         const elRank = document.getElementById('pswRankNum');
         const elElo = document.getElementById('pswElo');
         const elKdr = document.getElementById('pswKdr');
@@ -153,7 +209,6 @@
         const elKillsAdr = document.getElementById('pswKillsAdr');
         const elKdKr = document.getElementById('pswKdKr');
 
-        // Today stats elements
         const elTodayWins = document.getElementById('pswTodayWins');
         const elTodayLosses = document.getElementById('pswTodayLosses');
         const elTodayKillsAdr = document.getElementById('pswTodayKillsAdr');
@@ -173,11 +228,35 @@
         if (elTodayKillsAdr && stats.todayKillsAdr !== undefined) elTodayKillsAdr.textContent = stats.todayKillsAdr;
         if (elTodayKd && stats.todayKd !== undefined) elTodayKd.textContent = stats.todayKd;
 
-        if (elFlag) {
-            elFlag.innerHTML = stats.flagHtml || '';
-        }
-
+        if (elFlag) elFlag.innerHTML = stats.flagHtml || '';
         setupBadgeVisibility(stats.rank, stats.skillLevel, stats.isChallenger);
+
+        // Layout 2: Pro Wide Banner (media_1790812631607.png)
+        const ppbNick = document.getElementById('ppbNick');
+        const ppbElo = document.getElementById('ppbElo');
+        const ppbAdr = document.getElementById('ppbAdr');
+        const ppbAvg = document.getElementById('ppbAvg');
+        const ppbKd = document.getElementById('ppbKd');
+        const ppbKr = document.getElementById('ppbKr');
+        const ppbEuRank = document.getElementById('ppbEuRank');
+        const ppbCountryRank = document.getElementById('ppbCountryRank');
+        const ppbCountryFlag = document.getElementById('ppbCountryFlag');
+        const ppbStreak = document.getElementById('ppbStreak');
+
+        if (ppbNick && stats.nickname) ppbNick.textContent = stats.nickname;
+        if (ppbElo && stats.elo) ppbElo.textContent = stats.elo;
+        if (ppbAdr) ppbAdr.textContent = stats.avgAdrOnly || '—';
+        if (ppbAvg) ppbAvg.textContent = stats.avgKillsOnly || '—';
+        if (ppbKd) ppbKd.textContent = stats.recentKdOnly || '—';
+        if (ppbKr) ppbKr.textContent = stats.recentKrOnly || '—';
+        if (ppbEuRank) ppbEuRank.textContent = stats.euRank ? `#${stats.euRank}` : (stats.rank || '#10');
+        if (ppbCountryRank) ppbCountryRank.textContent = stats.countryRank ? `#${stats.countryRank}` : '';
+        if (ppbCountryFlag) ppbCountryFlag.innerHTML = stats.flagHtml || '';
+
+        // Streak W/L HTML
+        if (ppbStreak && stats.streakHtml) {
+            ppbStreak.innerHTML = stats.streakHtml;
+        }
     }
 
     async function fetchLivePlayerStats(userNick) {
@@ -186,45 +265,26 @@
             'Accept': 'application/json'
         };
 
-        // 1. Fetch player profile
         let playerResp;
         try {
             playerResp = await fetch(`https://open.faceit.com/data/v4/players?nickname=${encodeURIComponent(userNick)}`, { headers });
         } catch (netErr) {
-            console.error('[Faceit Pulse] Network error fetching player:', netErr);
             return {
-                rank: '!',
-                elo: 'NET ERR',
-                overallKdr: 'OFFLINE',
-                countryRank: '',
-                headerText: 'ПОМИЛКА МЕРЕЖІ З FACEIT',
-                winRate: '—',
-                killsAdr: '— / —',
-                kdKr: '— / —',
-                todayWins: 0,
-                todayLosses: 0,
-                todayKillsAdr: '— / —',
-                todayKd: '—',
-                flagHtml: ''
+                rank: '!', elo: 'ERR', nickname: userNick, overallKdr: 'OFFLINE', countryRank: '', euRank: '',
+                headerText: 'ПОМИЛКА МЕРЕЖІ З FACEIT', winRate: '—', killsAdr: '— / —', kdKr: '— / —',
+                avgAdrOnly: '—', avgKillsOnly: '—', recentKdOnly: '—', recentKrOnly: '—',
+                todayWins: 0, todayLosses: 0, todayKillsAdr: '— / —', todayKd: '—',
+                streakHtml: '<span class="ppb-l">OFFLINE</span>', flagHtml: ''
             };
         }
 
         if (!playerResp.ok) {
-            console.error('[Faceit Pulse] Player not found:', userNick, playerResp.status);
             return {
-                rank: '?',
-                elo: '404',
-                overallKdr: 'НЕ ЗНАЙДЕНО',
-                countryRank: '',
-                headerText: `НІК "${userNick}" НЕ ІСНУЄ НА FACEIT`,
-                winRate: '—',
-                killsAdr: '— / —',
-                kdKr: '— / —',
-                todayWins: 0,
-                todayLosses: 0,
-                todayKillsAdr: '— / —',
-                todayKd: '—',
-                flagHtml: ''
+                rank: '?', elo: '404', nickname: userNick, overallKdr: '404', countryRank: '', euRank: '',
+                headerText: `НІК "${userNick}" НЕ ІСНУЄ НА FACEIT`, winRate: '—', killsAdr: '— / —', kdKr: '— / —',
+                avgAdrOnly: '404', avgKillsOnly: '404', recentKdOnly: '—', recentKrOnly: '—',
+                todayWins: 0, todayLosses: 0, todayKillsAdr: '— / —', todayKd: '—',
+                streakHtml: '<span class="ppb-l">404</span>', flagHtml: ''
             };
         }
 
@@ -235,19 +295,11 @@
 
         if (!cs2) {
             return {
-                rank: '—',
-                elo: 'NO CS2',
-                overallKdr: '—',
-                countryRank: '',
-                headerText: 'CS2 СТАТИСТИКА ВІДСУТНЯ',
-                winRate: '—',
-                killsAdr: '— / —',
-                kdKr: '— / —',
-                todayWins: 0,
-                todayLosses: 0,
-                todayKillsAdr: '— / —',
-                todayKd: '—',
-                flagHtml: getCountryHtml(country)
+                rank: '—', elo: 'NO CS2', nickname: playerData.nickname, overallKdr: '—', countryRank: '', euRank: '',
+                headerText: 'CS2 СТАТИСТИКА ВІДСУТНЯ', winRate: '—', killsAdr: '— / —', kdKr: '— / —',
+                avgAdrOnly: '—', avgKillsOnly: '—', recentKdOnly: '—', recentKrOnly: '—',
+                todayWins: 0, todayLosses: 0, todayKillsAdr: '— / —', todayKd: '—',
+                streakHtml: '<span class="ppb-l">NO CS2</span>', flagHtml: getCountryHtml(country)
             };
         }
 
@@ -255,29 +307,20 @@
         const skillLevel = cs2.skill_level || 10;
         const region = cs2.region || 'EU';
 
-        // 2. Parallel requests: Match stats (limit=30), Lifetime stats, Country ranking, Regional ranking
         const [statsData, lifetimeData, countryRankData, regionRankData] = await Promise.all([
             fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=30`, { headers })
-                .then(r => r.ok ? r.json() : null)
-                .catch(() => null),
+                .then(r => r.ok ? r.json() : null).catch(() => null),
             fetch(`https://open.faceit.com/data/v4/players/${playerId}/stats/cs2`, { headers })
-                .then(r => r.ok ? r.json() : null)
-                .catch(() => null),
+                .then(r => r.ok ? r.json() : null).catch(() => null),
             country ? fetch(`https://open.faceit.com/data/v4/rankings/games/cs2/regions/${encodeURIComponent(region)}/players/${playerId}?country=${encodeURIComponent(country)}`, { headers })
-                .then(r => r.ok ? r.json() : null)
-                .catch(() => null) : Promise.resolve(null),
+                .then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
             fetch(`https://open.faceit.com/data/v4/rankings/games/cs2/regions/${encodeURIComponent(region)}/players/${playerId}`, { headers })
-                .then(r => r.ok ? r.json() : null)
-                .catch(() => null)
+                .then(r => r.ok ? r.json() : null).catch(() => null)
         ]);
 
-        // Country rank position
-        let countryPosition = '';
-        if (countryRankData && countryRankData.position) {
-            countryPosition = String(countryRankData.position);
-        }
+        let countryPosition = countryRankData?.position ? String(countryRankData.position) : '';
+        let euPosition = regionRankData?.position ? String(regionRankData.position) : '';
 
-        // Rank badge: if player is Challenger (Top 1000 in region), show regional rank (e.g. #1 for donk)
         let rankBadge = `#${skillLevel}`;
         let isChallenger = false;
         if (regionRankData && regionRankData.position && regionRankData.position <= 1000) {
@@ -285,13 +328,11 @@
             isChallenger = true;
         }
 
-        // Lifetime KDR
         let overallKdrText = '— KDR';
         if (lifetimeData && lifetimeData.lifetime && lifetimeData.lifetime['Average K/D Ratio']) {
             overallKdrText = `${lifetimeData.lifetime['Average K/D Ratio']} KDR`;
         }
 
-        // Process last N matches
         const allItems = statsData?.items || [];
         const limitMatches = allItems.slice(0, matchesLimit);
         const totalMatches = limitMatches.length;
@@ -317,8 +358,8 @@
         });
 
         const winRateNum = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
-        const avgKills = totalMatches > 0 ? (totalKills / totalMatches).toFixed(0) : '0';
-        const avgAdr = countAdr > 0 ? (totalAdr / countAdr).toFixed(1) : '—';
+        const avgKills = totalMatches > 0 ? Math.round(totalKills / totalMatches) : 0;
+        const avgAdr = countAdr > 0 ? (totalAdr / countAdr).toFixed(1) : (totalMatches > 0 ? '—' : '0');
         const recentKd = totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : totalKills.toFixed(2);
         const recentKr = totalRounds > 0 ? (totalKills / totalRounds).toFixed(2) : '—';
 
@@ -326,7 +367,7 @@
             overallKdrText = `${recentKd} KDR`;
         }
 
-        // 3. Compute STATS TODAY from match timestamps (Image 3)
+        // Today's Stats
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
@@ -357,26 +398,44 @@
         const todayAvgAdr = todayAdrCount > 0 ? (todayAdrTotal / todayAdrCount).toFixed(1) : (todayTotalMatches > 0 ? '0' : '0');
         const todayKd = todayDeaths > 0 ? (todayKills / todayDeaths).toFixed(2) : (todayTotalMatches > 0 ? todayKills.toFixed(2) : '0');
 
+        // Recent 5 matches streak (W/L chips)
+        const recentStreak = allItems.slice(0, 5).reverse();
+        let streakHtml = '';
+        if (recentStreak.length > 0) {
+            streakHtml = recentStreak.map(m => {
+                const isWin = m.stats.Result === '1' || m.stats.Winner === m.stats.Team;
+                return isWin ? '<span class="ppb-w">W</span>' : '<span class="ppb-l">L</span>';
+            }).join(' ');
+        } else {
+            streakHtml = '<span class="ppb-w">W</span> <span class="ppb-w">W</span> <span class="ppb-l">L</span>';
+        }
+
         return {
             rank: rankBadge,
             skillLevel: skillLevel,
             isChallenger: isChallenger,
             elo: String(currentElo),
+            nickname: playerData.nickname,
             overallKdr: overallKdrText,
             countryRank: countryPosition,
+            euRank: euPosition,
             headerText: `LAST ${totalMatches} MATCHES (${playerData.nickname})`,
             winRate: `${winRateNum}%`,
             killsAdr: `${avgKills} / ${avgAdr}`,
             kdKr: `${recentKd} / ${recentKr}`,
+            avgAdrOnly: avgAdr !== '—' ? String(Math.round(parseFloat(avgAdr))) : '—',
+            avgKillsOnly: String(avgKills),
+            recentKdOnly: String(recentKd),
+            recentKrOnly: String(recentKr),
             todayWins: todayWins,
             todayLosses: todayLosses,
             todayKillsAdr: `${todayAvgKills}/${todayAvgAdr}`,
             todayKd: String(todayKd),
+            streakHtml: streakHtml,
             flagHtml: getCountryHtml(country)
         };
     }
 
-    // Slide Swapper Logic (Last 30 Matches ⇄ Stats Today)
     function setupSlideSwapping() {
         const slideMatches = document.getElementById('pswSlideMatches');
         const slideToday = document.getElementById('pswSlideToday');
@@ -399,7 +458,7 @@
             return;
         }
 
-        // Default 'cycle' mode: auto-swap every 8s
+        // Cycle mode
         activeSlideIndex = 0;
         slideMatches.classList.add('active');
         slideToday.classList.remove('active');
@@ -434,16 +493,23 @@
                 skillLevel: 10,
                 isChallenger: true,
                 elo: 'CS2',
+                nickname: 'FACEIT',
                 overallKdr: 'PULSE',
                 countryRank: '',
+                euRank: '',
                 headerText: 'ВКАЖІТЬ ?nickname=ВАШ_НІК У URL',
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
+                avgAdrOnly: '—',
+                avgKillsOnly: '—',
+                recentKdOnly: '—',
+                recentKrOnly: '—',
                 todayWins: 0,
                 todayLosses: 0,
                 todayKillsAdr: '0/0',
                 todayKd: '0',
+                streakHtml: '<span class="ppb-w">W</span> <span class="ppb-l">L</span>',
                 flagHtml: getCountryHtml('ua')
             });
 
@@ -482,7 +548,6 @@
         setupSlideSwapping();
         update();
 
-        // Auto-refresh live Faceit stats every 45s during stream
         setInterval(update, 45000);
     }
 
