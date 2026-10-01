@@ -81,18 +81,46 @@ html, body {
 
 .pulse-stream-widget.theme-light {
     --psw-bg: #ffffff;
-    --psw-text: #111827;
-    --psw-text-muted: #6b7280;
-    --psw-header-text: #4b5563;
-    --psw-border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    --psw-text: #111111;
+    --psw-text-muted: #555555;
+    --psw-header-text: #555555;
+    --psw-border-color: rgba(0, 0, 0, 0.12);
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
 }
 
 .pulse-stream-widget.theme-light .psw-elo,
 .pulse-stream-widget.theme-light .psw-kdr,
 .pulse-stream-widget.theme-light .psw-country-rank,
 .pulse-stream-widget.theme-light .psw-stat-val {
-    color: #111827;
+    color: #111111 !important;
+}
+
+.pulse-stream-widget.theme-light .psw-mid-row,
+.pulse-stream-widget.theme-light .psw-stat-lbl {
+    color: #555555 !important;
+}
+
+.pulse-stream-widget.theme-light .psw-mid-section {
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.pulse-stream-widget.theme-light .psw-rank-pill {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+}
+
+.psw-level-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.psw-level-badge.hidden {
+    display: none !important;
 }
 
 .psw-top-row {
@@ -325,6 +353,64 @@ html, body {
     position: relative;
     overflow: hidden;
     transition: all 0.25s ease;
+}
+
+.pulse-pro-banner.theme-light {
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+    color: #111111 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-nick {
+    color: #111111 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-wave-icon {
+    stroke: #111111 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-elo {
+    color: #111111 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-stat-val {
+    color: #111111 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-stat-lbl {
+    color: #6b7280 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-divider {
+    background: rgba(0, 0, 0, 0.08) !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-rank-item {
+    color: #111111 !important;
+    font-family: monospace, sans-serif !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-rank-flag {
+    display: none !important;
+}
+
+.pulse-pro-banner.theme-light .challenger-official-svg path:first-child {
+    fill: transparent !important;
+}
+
+.pulse-pro-banner.theme-light .challenger-official-svg path:last-child {
+    fill: #111111 !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-streak .ppb-w {
+    color: #16a34a !important;
+}
+
+.pulse-pro-banner.theme-light .ppb-streak .ppb-l {
+    color: #dc2626 !important;
 }
 
 .pulse-pro-banner.transparent-bg {
