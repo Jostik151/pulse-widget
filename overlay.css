@@ -1,5 +1,19 @@
-/* Faceit Pulse - OBS Stream Overlay Styling */
+/* Faceit Pulse - Advanced Multi-Layout OBS Stream Overlay */
 @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800;900&family=Inter:wght@600;700;800;900&display=swap');
+
+:root {
+    --psw-accent: #ffc700;
+    --psw-accent-glow: rgba(255, 199, 0, 0.35);
+    --psw-border-color: rgba(255, 255, 255, 0.12);
+    --psw-bg: #0d0f13;
+    --psw-text: #ffffff;
+    --psw-text-muted: #8c93a0;
+    --psw-header-text: #7b8391;
+    --psw-win: #22c55e;
+    --psw-loss: #ef4444;
+    --pro-border: #22d3ee;
+    --pro-border-glow: rgba(34, 211, 238, 0.3);
+}
 
 * {
     margin: 0;
@@ -21,32 +35,71 @@ html, body {
     display: inline-block;
 }
 
+/* =========================================
+   LAYOUT 1: COMPACT CYBER (Default)
+   ========================================= */
 .pulse-stream-widget {
-    width: 285px;
-    background: #0d0f13;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
+    width: 295px;
+    background: var(--psw-bg);
+    border: 1px solid var(--psw-border-color);
+    border-radius: 14px;
     padding: 11px 14px 12px 14px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     user-select: none;
     transition: all 0.25s ease;
     position: relative;
+    overflow: hidden;
+    color: var(--psw-text);
 }
 
-/* Transparent Background mode for OBS */
+.pulse-stream-widget.has-bg-image {
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+.pulse-stream-widget.has-bg-image::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 16, 0.78);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 0;
+}
+
+.pulse-stream-widget > * {
+    position: relative;
+    z-index: 1;
+}
+
 .pulse-stream-widget.transparent-bg {
-    background: rgba(13, 15, 19, 0.7) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(13, 15, 19, 0.72) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* TOP ROW */
+.pulse-stream-widget.theme-light {
+    --psw-bg: #ffffff;
+    --psw-text: #111827;
+    --psw-text-muted: #6b7280;
+    --psw-header-text: #4b5563;
+    --psw-border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.pulse-stream-widget.theme-light .psw-elo,
+.pulse-stream-widget.theme-light .psw-kdr,
+.pulse-stream-widget.theme-light .psw-country-rank,
+.pulse-stream-widget.theme-light .psw-stat-val {
+    color: #111827;
+}
+
 .psw-top-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
 }
 
 .psw-left {
@@ -56,47 +109,71 @@ html, body {
 }
 
 .psw-rank-pill {
-    background: #e9002a;
+    background: var(--psw-accent);
     border-radius: 999px;
-    padding: 2px 7px;
+    padding: 3px 8px 3px 7px;
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    color: #ffffff;
-    box-shadow: 0 0 10px rgba(233, 0, 42, 0.35);
+    gap: 4px;
+    color: #0d0f13;
+    box-shadow: 0 0 12px var(--psw-accent-glow);
 }
 
+.psw-rank-pill.pill-hidden { display: none !important; }
+
 .psw-rank-num {
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 13.5px;
+    font-weight: 900;
     line-height: 1;
-    letter-spacing: -0.2px;
+    letter-spacing: -0.3px;
 }
 
 .psw-rank-icon {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
 }
 
-.psw-rank-icon svg {
-    display: block;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.6));
+.psw-standalone-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 0 8px rgba(255, 199, 0, 0.45));
 }
 
-.psw-elo {
-    font-size: 17px;
-    font-weight: 900;
+.psw-standalone-icon.hidden { display: none !important; }
+
+.psw-level-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #fe1f00;
     color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 0 10px rgba(254, 31, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.psw-level-badge.hidden { display: none !important; }
+
+.psw-elo {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--psw-text);
     letter-spacing: -0.3px;
     line-height: 1;
 }
 
 .psw-kdr {
-    font-size: 14px;
+    font-size: 14.5px;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--psw-text);
     letter-spacing: 0.2px;
     line-height: 1;
 }
@@ -104,7 +181,7 @@ html, body {
 .psw-right {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
 }
 
 .psw-flag {
@@ -117,22 +194,42 @@ html, body {
 .psw-country-rank {
     font-size: 14.5px;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--psw-text);
     line-height: 1;
 }
 
-/* MID ROW: LAST 30 MATCHES */
+.psw-mid-section {
+    position: relative;
+    min-height: 52px;
+}
+
+.psw-slide {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.psw-slide.active {
+    display: block;
+    opacity: 1;
+    animation: pswSlideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pswSlideFadeIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .psw-mid-row {
     font-size: 10px;
     font-weight: 800;
-    color: #7b8391;
+    color: var(--psw-header-text);
     letter-spacing: 1px;
     text-transform: uppercase;
     text-align: center;
     margin: 5px 0 6px 0;
 }
 
-/* BOTTOM ROW: 3 STATS COLUMNS */
 .psw-bot-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -149,7 +246,7 @@ html, body {
 .psw-stat-val {
     font-size: 15px;
     font-weight: 900;
-    color: #ffffff;
+    color: var(--psw-text);
     letter-spacing: -0.2px;
     line-height: 1.1;
 }
@@ -157,13 +254,203 @@ html, body {
 .psw-stat-lbl {
     font-size: 9.5px;
     font-weight: 600;
-    color: #8c93a0;
+    color: var(--psw-text-muted);
     margin-top: 3px;
     line-height: 1;
     white-space: nowrap;
 }
 
-/* Subtle glow pulse on update */
+.psw-wl-val {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.psw-win-num { color: var(--psw-win); font-weight: 900; }
+.psw-loss-num { color: var(--psw-loss); font-weight: 900; }
+.psw-wl-lbl { display: inline-flex; align-items: center; gap: 6px; }
+.psw-win-text { color: var(--psw-win); font-weight: 700; }
+.psw-loss-text { color: var(--psw-loss); font-weight: 700; }
+
+/* =========================================
+   LAYOUT 2: PRO WIDE BANNER (media_1790812631607.png)
+   ========================================= */
+.pulse-pro-banner {
+    width: 360px;
+    background: #0d121c;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 6px 6px;
+    border: 1.5px solid var(--pro-border);
+    border-radius: 16px;
+    padding: 9px 14px 9px 14px;
+    box-shadow: 0 0 20px var(--pro-border-glow), 0 8px 30px rgba(0, 0, 0, 0.85);
+    user-select: none;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.pulse-pro-banner.transparent-bg {
+    background: rgba(13, 18, 28, 0.75) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.pulse-pro-banner.has-bg-image {
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+.pulse-pro-banner.has-bg-image::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(9, 13, 20, 0.82);
+    backdrop-filter: blur(2px);
+    z-index: 0;
+}
+
+.pulse-pro-banner > * {
+    position: relative;
+    z-index: 1;
+}
+
+.ppb-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ppb-player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 135px;
+}
+
+.ppb-emblem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ppb-name-elo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ppb-nick {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.15;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 95px;
+}
+
+.ppb-elo-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.ppb-wave-icon {
+    color: #ffffff;
+    opacity: 0.9;
+}
+
+.ppb-elo {
+    font-size: 18px;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1;
+    letter-spacing: -0.3px;
+}
+
+.ppb-stats-grid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    gap: 10px;
+}
+
+.ppb-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ppb-stat-val {
+    font-size: 18px;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1;
+    letter-spacing: -0.2px;
+}
+
+.ppb-stat-lbl {
+    font-size: 10px;
+    font-weight: 800;
+    color: #8fa0b5;
+    margin-top: 3px;
+    line-height: 1;
+    letter-spacing: 0.5px;
+}
+
+.ppb-divider {
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 180, 0, 0.85) 0%, rgba(255, 180, 0, 0.4) 60%, transparent 100%);
+    margin: 7px 0 6px 0;
+}
+
+.ppb-bot-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ppb-ranks {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ppb-rank-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.ppb-rank-flag {
+    display: flex;
+    align-items: center;
+}
+
+.ppb-streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.ppb-w { color: var(--psw-win); }
+.ppb-l { color: var(--psw-loss); }
+
+/* Animation pulse */
 @keyframes statPulse {
     0% { transform: scale(1); filter: brightness(1); }
     50% { transform: scale(1.02); filter: brightness(1.2); }
