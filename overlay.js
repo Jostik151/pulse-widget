@@ -1,4 +1,4 @@
-/* Faceit Pulse - Real Live Faceit Statistics Overlay for OBS Studio & Streamlabs */
+/* Faceit Pulse - Real Live Faceit Statistics Overlay with Customization Engine */
 
 (function () {
     const params = new URLSearchParams(window.location.search || window.location.hash.replace(/^#/, '?'));
@@ -6,22 +6,133 @@
     let nickname = (params.get('nickname') || params.get('player') || params.get('user') || '').trim();
     let matchesLimit = parseInt(params.get('matches') || '30', 10);
     if (![10, 20, 30].includes(matchesLimit)) matchesLimit = 30;
-    const forceTransparent = params.get('bg') === 'transparent' || params.get('transparent') === '1';
 
-    // Direct Faceit Open API Key (Client Key)
+    // Display & Cycle mode
+    const displayMode = (params.get('mode') || 'cycle').toLowerCase(); // 'cycle' | 'matches' | 'today'
+    const swapInterval = parseInt(params.get('swap') || '8', 10) * 1000;
+
+    // Challenger Settings
+    // showRank: default true (1)
+    const showRank = params.get('showRank') !== '0' && params.get('rank') !== '0';
+    // showIcon: default true (1)
+    const showChallengerIcon = params.get('showChallengerIcon') !== '0' && params.get('showIcon') !== '0' && params.get('icon') !== '0';
+
+    // Styling & Theme
+    const bgParam = params.get('bg') || '';
+    const mapParam = (params.get('map') || '').toLowerCase();
+    const bgImageParam = params.get('bgImage') || params.get('img') || '';
+    const accentParam = params.get('accent') || '';
+    const themeParam = (params.get('theme') || 'dark').toLowerCase();
+
+    // Direct Faceit Open API Client Key
     const DEFAULT_FACEIT_KEY = '37f50b4c-e9b0-411d-8113-11bfddbdbea8';
     let apiKey = params.get('token') || params.get('key') || DEFAULT_FACEIT_KEY;
 
     let isFetching = false;
+    let cycleTimer = null;
+    let activeSlideIndex = 0; // 0 = matches, 1 = today
 
-    function applyTransparent(isTransparent) {
+    // Predefined high-res CS2 map backgrounds
+    const MAP_PRESETS = {
+        mirage: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_mirage.png',
+        dust2: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_dust2.png',
+        inferno: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_inferno.png',
+        nuke: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_nuke.png',
+        ancient: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_ancient.png',
+        anubis: 'https://cdn.fforecast.net/web/images/maps/48/map_icon_de_anubis.png'
+    };
+
+    function applyCustomStyles() {
         const widget = document.getElementById('streamWidget');
         if (!widget) return;
-        if (isTransparent) {
-            widget.classList.add('transparent-bg');
+
+        // Theme (Light or Dark)
+        if (themeParam === 'light' || bgParam === 'white' || bgParam === '#ffffff') {
+            widget.classList.add('theme-light');
         } else {
-            widget.classList.remove('transparent-bg');
+            widget.classList.remove('theme-light');
         }
+
+        // Accent Color
+        if (accentParam) {
+            let color = accentParam.startsWith('#') ? accentParam : `#${accentParam}`;
+            widget.style.setProperty('--psw-accent', color);
+            widget.style.setProperty('--psw-accent-glow', color + '55');
+        }
+
+        // Background settings
+        if (bgParam === 'transparent' || bgParam === '1') {
+            widget.classList.add('transparent-bg');
+        } else if (bgParam === 'clear' || bgParam === 'full') {
+            widget.classList.add('full-transparent-bg');
+        } else if (bgParam && bgParam.startsWith('#')) {
+            widget.style.setProperty('--psw-bg', bgParam);
+        } else if (bgParam && !bgParam.includes('http')) {
+            widget.style.setProperty('--psw-bg', `#${bgParam}`);
+        }
+
+        // Background image / map
+        let bgUrl = bgImageParam;
+        if (!bgUrl && mapParam && MAP_PRESETS[mapParam]) {
+            bgUrl = MAP_PRESETS[mapParam];
+        }
+
+        if (bgUrl) {
+            widget.classList.add('has-bg-image');
+            widget.style.backgroundImage = `url("${bgUrl}")`;
+        }
+    }
+
+    function setupBadgeVisibility(rankText, skillLevel, isChallenger) {
+        const pill = document.getElementById('pswRankPill');
+        const standaloneIcon = document.getElementById('pswStandaloneIcon');
+        const levelBadge = document.getElementById('pswLevelBadge');
+        const pillIcon = document.getElementById('pswPillIcon');
+
+        if (!pill || !standaloneIcon || !levelBadge) return;
+
+        // Reset
+        pill.classList.remove('pill-hidden');
+        standaloneIcon.classList.add('hidden');
+        levelBadge.classList.add('hidden');
+        if (pillIcon) pillIcon.style.display = '';
+
+        // Case 1: Both ON (Image 2 & 3: showRank=true, showIcon=true)
+        if (showRank && showChallengerIcon) {
+            pill.classList.remove('pill-hidden');
+            if (pillIcon) pillIcon.style.display = 'inline-flex';
+            standaloneIcon.classList.add('hidden');
+            levelBadge.classList.add('hidden');
+        }
+        // Case 2: Icon ON, Rank OFF (Image 4: showRank=false, showIcon=true)
+        else if (!showRank && showChallengerIcon) {
+            pill.classList.add('pill-hidden');
+            standaloneIcon.classList.remove('hidden');
+            levelBadge.classList.add('hidden');
+        }
+        // Case 3: Both OFF (Image 5: showRank=false, showIcon=false)
+        else if (!showRank && !showChallengerIcon) {
+            pill.classList.add('pill-hidden');
+            standaloneIcon.classList.add('hidden');
+            levelBadge.classList.remove('hidden');
+            levelBadge.textContent = skillLevel || '10';
+        }
+        // Case 4: Rank ON, Icon OFF (showRank=true, showIcon=false)
+        else {
+            pill.classList.remove('pill-hidden');
+            if (pillIcon) pillIcon.style.display = 'none';
+            standaloneIcon.classList.add('hidden');
+            levelBadge.classList.add('hidden');
+        }
+    }
+
+    function getCountryHtml(countryCode) {
+        if (!countryCode) return '';
+        const cc = countryCode.toLowerCase();
+        if (cc === 'ua') {
+            return `<svg width="18" height="13" viewBox="0 0 18 13" style="border-radius:2px; display:inline-block; vertical-align:middle;"><rect width="18" height="6.5" fill="#005BBB"/><rect y="6.5" width="18" height="6.5" fill="#FFD700"/></svg>`;
+        }
+        return `<img src="https://flagcdn.com/20x15/${cc}.png" width="18" height="13" style="border-radius:2px; display:inline-block; vertical-align:middle;" alt="${cc}">`;
     }
 
     function renderStats(stats) {
@@ -42,6 +153,12 @@
         const elKillsAdr = document.getElementById('pswKillsAdr');
         const elKdKr = document.getElementById('pswKdKr');
 
+        // Today stats elements
+        const elTodayWins = document.getElementById('pswTodayWins');
+        const elTodayLosses = document.getElementById('pswTodayLosses');
+        const elTodayKillsAdr = document.getElementById('pswTodayKillsAdr');
+        const elTodayKd = document.getElementById('pswTodayKd');
+
         if (elRank && stats.rank !== undefined) elRank.textContent = stats.rank;
         if (elElo && stats.elo !== undefined) elElo.textContent = stats.elo;
         if (elKdr && stats.overallKdr !== undefined) elKdr.textContent = stats.overallKdr;
@@ -51,18 +168,16 @@
         if (elKillsAdr && stats.killsAdr !== undefined) elKillsAdr.textContent = stats.killsAdr;
         if (elKdKr && stats.kdKr !== undefined) elKdKr.textContent = stats.kdKr;
 
+        if (elTodayWins && stats.todayWins !== undefined) elTodayWins.textContent = stats.todayWins;
+        if (elTodayLosses && stats.todayLosses !== undefined) elTodayLosses.textContent = stats.todayLosses;
+        if (elTodayKillsAdr && stats.todayKillsAdr !== undefined) elTodayKillsAdr.textContent = stats.todayKillsAdr;
+        if (elTodayKd && stats.todayKd !== undefined) elTodayKd.textContent = stats.todayKd;
+
         if (elFlag) {
             elFlag.innerHTML = stats.flagHtml || '';
         }
-    }
 
-    function getCountryHtml(countryCode) {
-        if (!countryCode) return '';
-        const cc = countryCode.toLowerCase();
-        if (cc === 'ua') {
-            return `<svg width="18" height="13" viewBox="0 0 18 13" style="border-radius:2px; display:inline-block; vertical-align:middle;"><rect width="18" height="6.5" fill="#005BBB"/><rect y="6.5" width="18" height="6.5" fill="#FFD700"/></svg>`;
-        }
-        return `<img src="https://flagcdn.com/20x15/${cc}.png" width="18" height="13" style="border-radius:2px; display:inline-block; vertical-align:middle;" alt="${cc}">`;
+        setupBadgeVisibility(stats.rank, stats.skillLevel, stats.isChallenger);
     }
 
     async function fetchLivePlayerStats(userNick) {
@@ -86,6 +201,10 @@
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
+                todayWins: 0,
+                todayLosses: 0,
+                todayKillsAdr: '— / —',
+                todayKd: '—',
                 flagHtml: ''
             };
         }
@@ -101,6 +220,10 @@
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
+                todayWins: 0,
+                todayLosses: 0,
+                todayKillsAdr: '— / —',
+                todayKd: '—',
                 flagHtml: ''
             };
         }
@@ -120,6 +243,10 @@
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
+                todayWins: 0,
+                todayLosses: 0,
+                todayKillsAdr: '— / —',
+                todayKd: '—',
                 flagHtml: getCountryHtml(country)
             };
         }
@@ -128,9 +255,9 @@
         const skillLevel = cs2.skill_level || 10;
         const region = cs2.region || 'EU';
 
-        // 2. Parallel requests: Match stats, Lifetime stats, Country rank, Regional rank
+        // 2. Parallel requests: Match stats (limit=30), Lifetime stats, Country ranking, Regional ranking
         const [statsData, lifetimeData, countryRankData, regionRankData] = await Promise.all([
-            fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=${matchesLimit}`, { headers })
+            fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=30`, { headers })
                 .then(r => r.ok ? r.json() : null)
                 .catch(() => null),
             fetch(`https://open.faceit.com/data/v4/players/${playerId}/stats/cs2`, { headers })
@@ -150,10 +277,12 @@
             countryPosition = String(countryRankData.position);
         }
 
-        // Rank badge: if player is Challenger (Top 1000 in region), show regional rank position (e.g. #1 for donk)
+        // Rank badge: if player is Challenger (Top 1000 in region), show regional rank (e.g. #1 for donk)
         let rankBadge = `#${skillLevel}`;
+        let isChallenger = false;
         if (regionRankData && regionRankData.position && regionRankData.position <= 1000) {
             rankBadge = `#${regionRankData.position}`;
+            isChallenger = true;
         }
 
         // Lifetime KDR
@@ -163,31 +292,12 @@
         }
 
         // Process last N matches
-        const items = statsData?.items || [];
-        const totalMatches = items.length;
+        const allItems = statsData?.items || [];
+        const limitMatches = allItems.slice(0, matchesLimit);
+        const totalMatches = limitMatches.length;
 
-        if (totalMatches === 0) {
-            return {
-                rank: rankBadge,
-                elo: String(currentElo),
-                overallKdr: overallKdrText,
-                countryRank: countryPosition,
-                headerText: `LAST ${matchesLimit} MATCHES (${playerData.nickname})`,
-                winRate: '0%',
-                killsAdr: '— / —',
-                kdKr: '— / —',
-                flagHtml: getCountryHtml(country)
-            };
-        }
-
-        let wins = 0;
-        let totalKills = 0;
-        let totalDeaths = 0;
-        let totalAdr = 0;
-        let totalRounds = 0;
-        let countAdr = 0;
-
-        items.forEach(item => {
+        let wins = 0, totalKills = 0, totalDeaths = 0, totalAdr = 0, totalRounds = 0, countAdr = 0;
+        limitMatches.forEach(item => {
             const s = item.stats || {};
             const isWinner = s.Result === '1' || s.Winner === s.Team;
             if (isWinner) wins++;
@@ -206,18 +316,51 @@
             }
         });
 
-        const winRateNum = Math.round((wins / totalMatches) * 100);
-        const avgKills = (totalKills / totalMatches).toFixed(0);
+        const winRateNum = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+        const avgKills = totalMatches > 0 ? (totalKills / totalMatches).toFixed(0) : '0';
         const avgAdr = countAdr > 0 ? (totalAdr / countAdr).toFixed(1) : '—';
-        const recentKd = totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : (totalKills).toFixed(2);
+        const recentKd = totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : totalKills.toFixed(2);
         const recentKr = totalRounds > 0 ? (totalKills / totalRounds).toFixed(2) : '—';
 
         if (overallKdrText === '— KDR' && totalDeaths > 0) {
             overallKdrText = `${recentKd} KDR`;
         }
 
+        // 3. Compute STATS TODAY from match timestamps (Image 3)
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+        let todayWins = 0, todayLosses = 0, todayKills = 0, todayDeaths = 0, todayAdrTotal = 0, todayAdrCount = 0;
+        allItems.forEach(item => {
+            const s = item.stats || {};
+            const finishedAt = s['Match Finished At'];
+            if (finishedAt && finishedAt >= startOfToday) {
+                const isWinner = s.Result === '1' || s.Winner === s.Team;
+                if (isWinner) todayWins++;
+                else todayLosses++;
+
+                const kills = parseFloat(s.Kills) || 0;
+                const deaths = parseFloat(s.Deaths) || 0;
+                const adr = parseFloat(s.ADR);
+
+                todayKills += kills;
+                todayDeaths += deaths;
+                if (!isNaN(adr) && adr > 0) {
+                    todayAdrTotal += adr;
+                    todayAdrCount++;
+                }
+            }
+        });
+
+        const todayTotalMatches = todayWins + todayLosses;
+        const todayAvgKills = todayTotalMatches > 0 ? Math.round(todayKills / todayTotalMatches) : 0;
+        const todayAvgAdr = todayAdrCount > 0 ? (todayAdrTotal / todayAdrCount).toFixed(1) : (todayTotalMatches > 0 ? '0' : '0');
+        const todayKd = todayDeaths > 0 ? (todayKills / todayDeaths).toFixed(2) : (todayTotalMatches > 0 ? todayKills.toFixed(2) : '0');
+
         return {
             rank: rankBadge,
+            skillLevel: skillLevel,
+            isChallenger: isChallenger,
             elo: String(currentElo),
             overallKdr: overallKdrText,
             countryRank: countryPosition,
@@ -225,8 +368,53 @@
             winRate: `${winRateNum}%`,
             killsAdr: `${avgKills} / ${avgAdr}`,
             kdKr: `${recentKd} / ${recentKr}`,
+            todayWins: todayWins,
+            todayLosses: todayLosses,
+            todayKillsAdr: `${todayAvgKills}/${todayAvgAdr}`,
+            todayKd: String(todayKd),
             flagHtml: getCountryHtml(country)
         };
+    }
+
+    // Slide Swapper Logic (Last 30 Matches ⇄ Stats Today)
+    function setupSlideSwapping() {
+        const slideMatches = document.getElementById('pswSlideMatches');
+        const slideToday = document.getElementById('pswSlideToday');
+        if (!slideMatches || !slideToday) return;
+
+        if (cycleTimer) {
+            clearInterval(cycleTimer);
+            cycleTimer = null;
+        }
+
+        if (displayMode === 'matches') {
+            slideMatches.classList.add('active');
+            slideToday.classList.remove('active');
+            return;
+        }
+
+        if (displayMode === 'today') {
+            slideMatches.classList.remove('active');
+            slideToday.classList.add('active');
+            return;
+        }
+
+        // Default 'cycle' mode: auto-swap every 8s
+        activeSlideIndex = 0;
+        slideMatches.classList.add('active');
+        slideToday.classList.remove('active');
+
+        cycleTimer = setInterval(() => {
+            if (activeSlideIndex === 0) {
+                slideMatches.classList.remove('active');
+                slideToday.classList.add('active');
+                activeSlideIndex = 1;
+            } else {
+                slideToday.classList.remove('active');
+                slideMatches.classList.add('active');
+                activeSlideIndex = 0;
+            }
+        }, swapInterval);
     }
 
     async function update() {
@@ -242,7 +430,9 @@
 
         if (!nickname) {
             renderStats({
-                rank: 'LIVE',
+                rank: '#10',
+                skillLevel: 10,
+                isChallenger: true,
                 elo: 'CS2',
                 overallKdr: 'PULSE',
                 countryRank: '',
@@ -250,6 +440,10 @@
                 winRate: '—',
                 killsAdr: '— / —',
                 kdKr: '— / —',
+                todayWins: 0,
+                todayLosses: 0,
+                todayKillsAdr: '0/0',
+                todayKd: '0',
                 flagHtml: getCountryHtml('ua')
             });
 
@@ -284,13 +478,11 @@
     }
 
     function init() {
-        if (forceTransparent) {
-            applyTransparent(true);
-        }
-
+        applyCustomStyles();
+        setupSlideSwapping();
         update();
 
-        // Auto-refresh live stats every 45s during stream
+        // Auto-refresh live Faceit stats every 45s during stream
         setInterval(update, 45000);
     }
 
